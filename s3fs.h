@@ -34,7 +34,7 @@ typedef struct __s3dirent {
   mode_t mode ; //protection
   uid_t uid;
   gid_t gid;
-  
+  dev_t id;
   
 } s3dirent_t ; 
 
