@@ -330,10 +330,12 @@ int fs_mkdir(const char *path, mode_t mode) {
        
        s3dirent_t * itr = entries;
        int index =0;
-       while ( itr != NULL){
-       	 new_obj[index]= itr;
+       for (; index < entity_count ; index ++)
+       {
+       //while ( itr != NULL){
+       	 new_obj[index]= itr ;
        	 itr ++;
-       	 index ++;
+  //     	 index ++;
        }
 
        free(entries);
@@ -352,14 +354,23 @@ int fs_mkdir(const char *path, mode_t mode) {
     the_dir -> id = 0 ; 
     the_dir -> mode = S_IFDIR; //c?????????????????????????????check if this is right 
     
-
-       
-       
-       
-       
-       
-    
-
+    new_obj[index] = the_dir ;//our new directory meta data goes in the last cell of the new ojbect we are about to pass
+   
+    ret_val = s3fs_put_object(ctx->s3bucket,dir_name,(uint8_t *) new_obj, sizeof(new_obj));
+     
+      if ( ret_val == -1)//meaning  that no object was put
+        {
+          free(new_obj);
+          free(the_dir);
+          free(given_path);
+          free(the_buffer);
+          return NULL;
+        }    
+        
+          free(new_obj);
+          free(the_dir);
+          free(given_path);
+          free(the_buffer);
     return 0;
 }
 
@@ -370,6 +381,11 @@ int fs_mkdir(const char *path, mode_t mode) {
 int fs_rmdir(const char *path) {
     fprintf(stderr, "fs_rmdir(path=\"%s\")\n", path);
     s3context_t *ctx = GET_PRIVATE_DATA;
+    
+    char * given_path = strdup(path);
+    char * base_name = basename(given_path);
+    char * dir_name = dirname(given_path);
+    
     return -EIO;
 }
 
