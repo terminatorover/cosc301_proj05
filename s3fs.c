@@ -236,7 +236,38 @@ int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset
     fprintf(stderr, "fs_readdir(path=\"%s\", buf=%p, offset=%d)\n",
           path, buf, (int)offset);
     s3context_t *ctx = GET_PRIVATE_DATA;
-    return -EIO;
+    
+    
+    ssize_t ret_val = 0;
+    uint8_t * the_buffer = NULL;
+    
+    char * given_path = strdup(path);
+    char * base_name = basename(given_path);
+    char * dir_name = dirname(given_path);
+  
+    ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buffer, 0, 0);//we pass in dir_name 
+	//because we want to get the object assoicated with a directory since all our
+	//meta data be it for a file or directory is in a directory (we have oursetup
+	//such that file keys don't contain objects with metadata)
+	
+	if ( ret_val < 0 ){//means we didn't get our object back 
+		free(given_path);
+		return -EIO;
+	}
+	int itr = 0;
+	s3dirent_t * entries = (s3_dirent_t *)the_buffer;
+	int entity_count = ret_val / sizeof(s3dirent_t);//entitiy count gives us how many dirents we have
+	int numdirent = objsize / sizeof(s3dirent_t);
+	int i = 0;
+	
+	for (; itr < entity_count; itr++) {
+	// call filler function to fill in directory name
+	// to the supplied buffer
+	if (filler(buf, entries[itr].name, NULL, 0) != 0) {
+		return -ENOMEM;
+	}
+	}
+    return 0;
 }
 
 
