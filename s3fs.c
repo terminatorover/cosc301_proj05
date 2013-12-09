@@ -38,12 +38,16 @@
  * Initialize the file system.  This is called once upon
  * file system startup.
  */
-void * fs_init()//struct fuse_conn_info *conn)
+void * fs_init(/struct fuse_conn_info *conn)
 {
-    fprintf(stderr, "fs_init --- iniatializing file system.\n");
-    //    s3context_t *ctx = GET_PRIVATE_DATA;
-    s3context_t *ctx = getenv(S3BUCKET);
-    printf("content of s3content_t %s" , ctx -> s3bucket  );
+   fprintf(stderr, "fs_init --- iniatializing file system.\n");
+    s3context_t *ctx = GET_PRIVATE_DATA;
+
+    time_t the_time = time(NULL);
+    ssize_t ret_val = 0
+    
+    //    s3context_t *ctx = getenv(S3BUCKET);
+    //    printf("content of s3content_t %s" , ctx -> s3bucket  );
     
    
     if (s3fs_test_bucket( ctx -> s3bucket) < 0) {
@@ -56,10 +60,29 @@ void * fs_init()//struct fuse_conn_info *conn)
     } else {
       printf("Successfully cleared the bucket (removed all objects)\n");
       }
+    
+    s3dirent_t * root_dir = (s3dirent_t *) malloc (sizeof(s3dirent_t));
+    
 
+    root_dir -> type = TYPE_DIR;
+    memset( root_dir -> name, 0, 256);
+    strncpy(root_dir -> name ,".",1);
+    //    root_dir -> mode == ROOT_DIR ;
+    root_dir ->uid = fuse_get_context()->uid;
+    root_dir ->gid = fuse_get_context()->gid;
+    root_dir -> size = 0 ;
+    root_dir -> mtime=  the_time;
 
+    ret_val = s3fs_put_object(ctx->s3bucket, "/",(uint8_t *) root_dir, sizeof(s3dirent_t))
+     
+      if ( ret_val == -1)//meaning  that no object was put
+	{
+	  free(root_dir);
+	  return NULL;
+	}    
+    free(root_dir);
 
-        return ctx;
+     return ctx;
 }
 
 /*

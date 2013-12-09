@@ -27,6 +27,16 @@ typedef struct {
  * type) should go here.
  */
 
+typedef struct __s3dirent {
+  unsigned char type ;//dir or regurlar file
+  char name[256]
+  time_t mtime ; //last modified time
+  mode_t mode ; //protection
+  uid_t uid;
+  gid_t gid;
+  
+  
+} s3dirent_t ; 
 
 
 
