@@ -107,7 +107,25 @@ void fs_destroy(void *userdata) {
 int fs_getattr(const char *path, struct stat *statbuf) {
     fprintf(stderr, "fs_getattr(path=\"%s\")\n", path);
     s3context_t *ctx = GET_PRIVATE_DATA;
-    return -EIO;
+    
+   
+   ssize_t ret_val = 0; //used to recieve the number of bytes read from s3 file system
+   uint8_t * the_buffer = NULL; //buffer to be used for getting object from s3 file system 
+   
+    if ( 0 == strncmp(path,"/",strlen(path))){//check if we are being asked to get the atrr of root directory
+    	ret_val = s3fs_get_object(ctx->s3bucket, path, &the_buffer, 0, 0);
+    	if ( ret_val < 0){//this is only true if we were not able to return the object
+     		return -EIO;
+     		}
+     	
+    }
+    s3dirent_t * root_dir = (s3dirent_t *)the_buffer;
+    statbuf -> st_mode = root_dir -> mode;
+    statbuf -> st_uid = root_dir -> uid;
+    statbuf -> st_gid = root_dir -> gid;
+    
+
+    
 }
 
 
