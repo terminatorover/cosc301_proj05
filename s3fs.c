@@ -74,6 +74,7 @@ void * fs_init(/struct fuse_conn_info *conn)
     root_dir ->gid = fuse_get_context()->gid;
     root_dir -> size = 0 ;
     root_dir -> mtime=  the_time;
+    root_dir -> id = 0 ; 
 
     ret_val = s3fs_put_object(ctx->s3bucket, "/",(uint8_t *) root_dir, sizeof(s3dirent_t))
      
@@ -112,21 +113,69 @@ int fs_getattr(const char *path, struct stat *statbuf) {
    ssize_t ret_val = 0; //used to recieve the number of bytes read from s3 file system
    uint8_t * the_buffer = NULL; //buffer to be used for getting object from s3 file system 
    
+   char * the_path = strudup(path)
+   char * dir_name = dirname(the_path);
+   char * base_name = basename(the_path);
+   
     if ( 0 == strncmp(path,"/",strlen(path))){//check if we are being asked to get the atrr of root directory
     	ret_val = s3fs_get_object(ctx->s3bucket, path, &the_buffer, 0, 0);
     	if ( ret_val < 0){//this is only true if we were not able to return the object
      		return -EIO;
      		}
      	
-    }
+
     s3dirent_t * root_dir = (s3dirent_t *)the_buffer;
     statbuf -> st_mode = root_dir -> mode;
     statbuf -> st_uid = root_dir -> uid;
     statbuf -> st_gid = root_dir -> gid;
+    statbuf -> st_mtime = root_dir ->mtime; 
+    statbuf -> st_dev = root_dir -> id; 
+    statbuf -> st_size = root_dir -> size; 
     
+    free(the_buffer);//because s3fs_get_object uses the_buffer as a pointer to a malloced object()
+    free(the_path);
+}else { //now we know that we are not being asekd about the atrr of the root aka "/"
+	ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buffer, 0, 0);//we pass in dir_name 
+	//because we want to get the object assoicated with a directory since all our
+	//meta data be it for a file or directory is in a directory (we have oursetup
+	//such that file keys don't contain objects with metadata)
+	
+	if ( ret_val < 0 ){//means we didn't get our object back 
+		free(the_path);
+		return -EIO;
+	}
+	int itr = 0;
+	s3dirent_t * entries = (s3_dirent_t *)the_buffer;
+	int entity_count = ret_val / sizeof(s3dirent_t);//entitiy count gives us how many dirents we have
+	
+	for (; itr < entity_count; itr++ ){
+		 if (0 == strncmp(entries[itr].name,base_name,256))//check if any one of the metadata
+		 /*stored in the directry dir_name matches the base name
+		 path       dirname   basename
+		 /usr/lib   /usr      lib
+		this means , when we store the name of a file or dir in another directory we just specify the name
+		and not the whole path
+		*/
+		 {
+		  
+		  statbuf -> st_mode = entries[itr] -> mode;
+		  statbuf -> st_uid = entries[itr] -> uid;
+         	  statbuf -> st_gid = entries[itr] -> gid;
+    		  statbuf -> st_mtime = entries[itr]->mtime; 
+    		  statbuf -> st_dev = entries[itr] -> id; 
+		  statbuf -> st_size = entries[itr] -> size; 
+		  break ;
+		 }
+	   }
+	
+	free(entries);
+	free(the_buffer);
+	
+	}
+return 0; 
 
-    
 }
+
 
 
 /*
