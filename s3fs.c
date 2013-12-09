@@ -69,7 +69,7 @@ void * fs_init(/struct fuse_conn_info *conn)
     root_dir -> type = TYPE_DIR;
     memset( root_dir -> name, 0, 256);
     strncpy(root_dir -> name ,".",1);
-    //    root_dir -> mode == ROOT_DIR ;
+    root_dir -> mode == (S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR);
     root_dir ->uid = fuse_get_context()->uid;
     root_dir ->gid = fuse_get_context()->gid;
     root_dir -> size = 0 ;
@@ -277,7 +277,8 @@ int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset
 int fs_releasedir(const char *path, struct fuse_file_info *fi) {
     fprintf(stderr, "fs_releasedir(path=\"%s\")\n", path);
     s3context_t *ctx = GET_PRIVATE_DATA;
-    return -EIO;
+    return 0 ; 
+    
 }
 
 
@@ -293,8 +294,73 @@ int fs_mkdir(const char *path, mode_t mode) {
     fprintf(stderr, "fs_mkdir(path=\"%s\", mode=0%3o)\n", path, mode);
     s3context_t *ctx = GET_PRIVATE_DATA;
     mode |= S_IFDIR;
+    
+    ssize_t ret_val = 0;
+    uint8_t * the_buffer = NULL;
+    
+    char * given_path = strdup(path);
+    char * base_name = basename(given_path);
+    char * dir_name = dirname(given_path);
 
-    return -EIO;
+	ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buffer, 0, 0);
+	
+        if ( ret_val < 0 ){//means we didn't get our object back 
+                free(given_path);
+                return -EIO;
+        }
+        int itr = 0;
+        s3dirent_t * entries = (s3_dirent_t *)the_buffer;
+        int entity_count = ret_val / sizeof(s3dirent_t);//entitiy count gives us how many dirents we have
+        
+        for (; itr < entity_count; itr++ ){
+                 if (0== strncmp( entries[itr].name,base_name,256){
+                 	if ( entries[itr].type == TYPE_DIR){
+                       	
+                                free(given_path);
+                                free(the_buffer);
+                                return -EEXIST;
+                        }
+                        
+                 }
+                        
+                        
+       }
+       s3dirent_t * new_obj = (s3_dirent_t *)malloc(sizeof(s3dirent_t)*(entity_count +1));
+    
+       
+       s3dirent_t * itr = entries;
+       int index =0;
+       while ( itr != NULL){
+       	 new_obj[index]= itr;
+       	 itr ++;
+       	 index ++;
+       }
+
+       free(entries);
+       s3dirent_t * new = NULL; 
+       s3dirent_t * the_dir = (s3dirent_t *) malloc (sizeof(s3dirent_t));
+    
+
+    the_dir -> type = TYPE_DIR;
+    memset( the_dir -> name, 0, 256);
+    strncpy(the_dir -> name ,base_name,1);
+    //    root_dir -> mode == ROOT_DIR ;
+    the_dir ->uid = fuse_get_context()->uid;
+    the_dir ->gid = fuse_get_context()->gid;
+    the_dir -> size = 0 ;
+    the_dir -> mtime=  the_time;
+    the_dir -> id = 0 ; 
+    the_dir -> mode = S_IFDIR; //c?????????????????????????????check if this is right 
+    
+
+       
+       
+       
+       
+       
+    
+
+    return 0;
 }
 
 
