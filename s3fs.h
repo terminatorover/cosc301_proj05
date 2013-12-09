@@ -35,6 +35,8 @@ typedef struct __s3dirent {
   uid_t uid;
   gid_t gid;
   dev_t id;
+  off_t size; 
+  
   
 } s3dirent_t ; 
 
