@@ -38,11 +38,28 @@
  * Initialize the file system.  This is called once upon
  * file system startup.
  */
-void *fs_init(struct fuse_conn_info *conn)
+void * fs_init()//struct fuse_conn_info *conn)
 {
-    fprintf(stderr, "fs_init --- initializing file system.\n");
-    s3context_t *ctx = GET_PRIVATE_DATA;
-    return ctx;
+    fprintf(stderr, "fs_init --- iniatializing file system.\n");
+    //    s3context_t *ctx = GET_PRIVATE_DATA;
+    s3context_t *ctx = getenv(S3BUCKET);
+    printf("content of s3content_t %s" , ctx -> s3bucket  );
+    
+   
+    if (s3fs_test_bucket( ctx -> s3bucket) < 0) {
+      printf("Failed to connect to bucket (s3fs_test_bucket)\n");
+    } else {
+      printf("Successfully connected to bucket (s3fs_test_bucket)\n");
+    }
+    if (s3fs_clear_bucket( ctx -> s3bucket) < 0) {
+      printf("Failed to clear bucket (s3fs_clear_bucket)\n");
+    } else {
+      printf("Successfully cleared the bucket (removed all objects)\n");
+      }
+
+
+
+        return ctx;
 }
 
 /*
@@ -357,6 +374,6 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Starting up FUSE file system.\n");
     int fuse_stat = fuse_main(argc, argv, &s3fs_ops, stateinfo);
     fprintf(stderr, "Startup function (fuse_main) returned %d\n", fuse_stat);
-    
+    fs_init();
     return fuse_stat;
 }
