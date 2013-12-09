@@ -52,11 +52,13 @@ void * fs_init(/struct fuse_conn_info *conn)
    
     if (s3fs_test_bucket( ctx -> s3bucket) < 0) {
       printf("Failed to connect to bucket (s3fs_test_bucket)\n");
+      return NULL;
     } else {
       printf("Successfully connected to bucket (s3fs_test_bucket)\n");
     }
     if (s3fs_clear_bucket( ctx -> s3bucket) < 0) {
       printf("Failed to clear bucket (s3fs_clear_bucket)\n");
+      return NULL; 
     } else {
       printf("Successfully cleared the bucket (removed all objects)\n");
       }
