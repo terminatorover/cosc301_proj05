@@ -454,7 +454,7 @@ int fs_mknod(const char *path, mode_t mode, dev_t dev) {
     
     uint8_t * buffer = NULL;
     ssize_t ret_val = 0;
-    
+    time_t current_time  =  time(NULL);
     //lets check if the file exists
     ret_val = s3fs_get_object(ctx->s3bucket, given_path, &buffer,0,0);
     free(buffer);
@@ -474,7 +474,16 @@ int fs_mknod(const char *path, mode_t mode, dev_t dev) {
     s3dirent_t * fresh_parent = (s3dirent_t *) malloc(ret_val + sizeof(s3dirent_t));
     s3dirent_t * new_file =  (s3dirent_t *) malloc(sizeof(s3dirent_t));
     //-----initalize the file
-
+    new_file ->type =  S3FS_TYPE_FILE;
+    memset( new_file -> name, 0,256);
+    strncpy(new_file -> name , base_name, strlen(base_name));
+    new_file -> mode = mode; 
+    new_file->uid = fuse_get_context()->uid;
+    new_file->gid = fuse_get_context()->gid;
+    new_file->mtime = current_time;
+    new_file -> size = 0;
+    new_file -> id = dev ;
+    
 
 
     //-----initalize the file 
@@ -485,7 +494,7 @@ int fs_mknod(const char *path, mode_t mode, dev_t dev) {
       fresh_parent[itr] = dir_ents[itr];
      }
     //adding the new 
-    fresh_parent[itr] = new_file ;//pointers or not 
+    fresh_parent[itr] = new_file ;//pointers or not ?????????????????
 
     
 
