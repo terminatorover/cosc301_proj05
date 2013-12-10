@@ -294,7 +294,7 @@ int fs_mkdir(const char *path, mode_t mode) {
     fprintf(stderr, "fs_mkdir(path=\"%s\", mode=0%3o)\n", path, mode);
     s3context_t *ctx = GET_PRIVATE_DATA;
     mode |= S_IFDIR;
-    
+    time_t the_time = time(NULL);
     ssize_t ret_val = 0;
     uint8_t * the_buffer = NULL;
     
@@ -313,7 +313,7 @@ int fs_mkdir(const char *path, mode_t mode) {
         int entity_count = ret_val / sizeof(s3dirent_t);//entitiy count gives us how many dirents we have
         
         for (; itr < entity_count; itr++ ){
-                 if (0== strncmp( entries[itr].name,base_name,256){
+	  if (0== strncmp( entries[itr].name,base_name,256)){
 		     if ( entries[itr].type == TYPE_DIR){
                        	        free(given_path);
                                 free(the_buffer);
@@ -326,12 +326,12 @@ int fs_mkdir(const char *path, mode_t mode) {
        s3dirent_t * new_obj = (s3dirent_t *)malloc(sizeof(s3dirent_t)*(entity_count +1));
     
        
-       s3dirent_t * itr = entries;
+       s3dirent_t * et = entries;
        int index =0;
        for (; index < entity_count ; index ++)
        {
        //while ( itr != NULL){
-       	 new_obj[index]= itr ;
+       	 new_obj[index]= *et ;
        	 itr ++;
   //     	 index ++;
        }
@@ -352,7 +352,7 @@ int fs_mkdir(const char *path, mode_t mode) {
     the_dir -> id = 0 ; 
     the_dir -> mode = S_IFDIR; //c?????????????????????????????check if this is right 
     
-    new_obj[index] = the_dir ;//our new directory meta data goes in the last cell of the new ojbect we are about to pass
+    new_obj[index] = *the_dir ;//our new directory meta data goes in the last cell of the new ojbect we are about to pass
    
     ret_val = s3fs_put_object(ctx->s3bucket,dir_name,(uint8_t *) new_obj, sizeof(new_obj));
      
@@ -362,7 +362,7 @@ int fs_mkdir(const char *path, mode_t mode) {
           free(the_dir);
           free(given_path);
           free(the_buffer);
-          return NULL;
+          return -EIO;
         }    
         
           free(new_obj);
@@ -414,8 +414,8 @@ int fs_rmdir(const char *path) {
     int itr = 0;
     for ( ; itr < count ; itr ++){
       if ( 0 == strncmp(dir_ents[itr].name,base_name,256))//if entry is the the name of the file we want to get rid of 
-	continue;
-       } 
+	{	continue;
+	}
      else{ fresh_parent[itr] = dir_ents[itr];
      }
     ret_val = s3fs_put_object(ctx->s3bucket, dir_name, (uint8_t *)fresh_parent,sizeof(s3dirent_t)*count);
