@@ -455,7 +455,51 @@ int fs_mknod(const char *path, mode_t mode, dev_t dev) {
     uint8_t * buffer = NULL;
     ssize_t ret_val = 0;
     
-    ret_val = s3fs_get_object(ctx->s3bucket, given_path, 
+    //lets check if the file exists
+    ret_val = s3fs_get_object(ctx->s3bucket, given_path, &buffer,0,0);
+    free(buffer);
+    if ( 0 <= ret_val){//the file exists
+      free(given_path);
+      free(buffer);//-------------???????????check
+      return -EEXIST;// 
+    }
+    //lets check if the parent dir exists
+    ret_val = s3fs_get_object(ctx->s3bucket,dir_name, &buffer,0,0);
+    if ( 0 > ret_val ){//if it doesn't
+      free(given_path);
+      return -EINVAL;//invalid input since the dir the user wants to create the file in doesn't exist
+      
+    }
+    int entry_count = ret_val / sizeof(s3dirent_t);
+    s3dirent_t * fresh_parent = (s3dirent_t *) malloc(ret_val + sizeof(s3dirent_t));
+    s3dirent_t * new_file =  (s3dirent_t *) malloc(sizeof(s3dirent_t));
+    //-----initalize the file
+
+
+
+    //-----initalize the file 
+    s3dirent_t * dir_ents = (s3dirent_t *) the_buffer;
+    //    int count = sizeof(fresh_parent) / sizeof(s3dirent_t);//no dirents our new dir will have
+    int itr = 0;
+    for ( ; itr < entry_count ; itr ++){
+      fresh_parent[itr] = dir_ents[itr];
+     }
+    //adding the new 
+    fresh_parent[itr] = new_file ;//pointers or not 
+
+    
+
+    ret_val = s3fs_put_object(ctx->s3bucket, dir_name, (uint8_t *)fresh_parent,sizeof(s3dirent_t)*count);
+
+    if ( ret_val == -1){//the object was not put
+      free( fresh_parent);
+      return -EIO;
+    }
+    free( fresh_parent);
+    free(given_path);
+    return 0;
+}   
+				   
     
     
     return -EIO;
