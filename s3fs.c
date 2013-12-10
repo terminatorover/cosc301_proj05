@@ -69,7 +69,7 @@ void * fs_init(/struct fuse_conn_info *conn)
     root_dir -> type = TYPE_DIR;
     memset( root_dir -> name, 0, 256);
     strncpy(root_dir -> name ,".",1);
-    root_dir -> mode == (S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR);
+    root_dir -> mode == ROOT_DIR_MODE;
     root_dir ->uid = fuse_get_context()->uid;
     root_dir ->gid = fuse_get_context()->gid;
     root_dir -> size = 0 ;
@@ -323,7 +323,6 @@ int fs_mkdir(const char *path, mode_t mode) {
                         
                  }
                         
-                        
        }
        s3dirent_t * new_obj = (s3_dirent_t *)malloc(sizeof(s3dirent_t)*(entity_count +1));
     
@@ -346,7 +345,7 @@ int fs_mkdir(const char *path, mode_t mode) {
     the_dir -> type = TYPE_DIR;
     memset( the_dir -> name, 0, 256);
     strncpy(the_dir -> name ,base_name,1);
-    //    root_dir -> mode == ROOT_DIR ;
+
     the_dir ->uid = fuse_get_context()->uid;
     the_dir ->gid = fuse_get_context()->gid;
     the_dir -> size = 0 ;
@@ -474,7 +473,7 @@ int fs_mknod(const char *path, mode_t mode, dev_t dev) {
     s3dirent_t * fresh_parent = (s3dirent_t *) malloc(ret_val + sizeof(s3dirent_t));
     s3dirent_t * new_file =  (s3dirent_t *) malloc(sizeof(s3dirent_t));
     //-----initalize the file
-    new_file ->type =  S3FS_TYPE_FILE;
+    new_file ->type =  TYPE_FILE;
     memset( new_file -> name, 0,256);
     strncpy(new_file -> name , base_name, strlen(base_name));
     new_file -> mode = mode; 
@@ -483,9 +482,6 @@ int fs_mknod(const char *path, mode_t mode, dev_t dev) {
     new_file->mtime = current_time;
     new_file -> size = 0;
     new_file -> id = dev ;
-    
-
-
     //-----initalize the file 
     s3dirent_t * dir_ents = (s3dirent_t *) the_buffer;
     //    int count = sizeof(fresh_parent) / sizeof(s3dirent_t);//no dirents our new dir will have
@@ -531,7 +527,27 @@ int fs_mknod(const char *path, mode_t mode, dev_t dev) {
 int fs_open(const char *path, struct fuse_file_info *fi) {
     fprintf(stderr, "fs_open(path\"%s\")\n", path);
     s3context_t *ctx = GET_PRIVATE_DATA;
-    return -EIO;
+    char * given_path = strdup(path);
+
+    char * dir_name = dirname(given_path);
+    char * base_name = basename(given_path);
+    
+    uint8_t * the_buffer = NULL;
+    ssize_t ret_val = 0;
+    
+    size_t path_len = strlen(path);
+    
+    ret_val =  s3fs_get_object(ctx->s3bucket, given_path, &the_buffer, 0, 0);
+    if ( NULL != the_buffer){//the file doesn't exist
+      free(the_buffer);
+    }
+    free(given_path);
+
+    if( ret_val < 0){
+      return -EIO;
+    }
+    return 0;
+
 }
 
 

@@ -16,7 +16,11 @@
 #define S3BUCKET "S3_BUCKET"
 
 #define BUFFERSIZE 1024
+#define ROOT_DIR_MODE (S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR)
 
+#define TYPE_DIR     0
+#define TYPE_FILE    1
+#define S3FS_TYPE_UNUSED  2
 // store filesystem state information in this struct
 typedef struct {
     char s3bucket[BUFFERSIZE];
@@ -29,7 +33,7 @@ typedef struct {
 
 typedef struct __s3dirent {
   unsigned char type ;//dir or regurlar file
-  char name[256]
+  char name[256];
   time_t mtime ; //last modified time
   mode_t mode ; //protection
   uid_t uid;
