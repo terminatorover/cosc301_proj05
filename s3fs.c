@@ -217,14 +217,16 @@ int fs_opendir(const char *path, struct fuse_file_info *fi) {
 				free(given_path);
 				free(the_buffer);
 				return 0;
-					
-			}
+    			}
 			break ;
-		 }    
+	 }    
 
     
-    return -EIO;
-    
+
+	}
+	free(given_path);
+	free(the_buffer);
+    return -EEXIST;
 }
 
 
@@ -453,19 +455,19 @@ int fs_mknod(const char *path, mode_t mode, dev_t dev) {
     char * dir_name = dirname(given_path);
     char * base_name = basename(given_path);
     
-    uint8_t * buffer = NULL;
+    uint8_t * the_buffer = NULL;
     ssize_t ret_val = 0;
     time_t current_time  =  time(NULL);
     //lets check if the file exists
-    ret_val = s3fs_get_object(ctx->s3bucket, given_path, &buffer,0,0);
-    free(buffer);
+    ret_val = s3fs_get_object(ctx->s3bucket, given_path, &the_buffer,0,0);
+    free(the_buffer);
     if ( 0 <= ret_val){//the file exists
       free(given_path);
-      free(buffer);//-------------???????????check
+      free(the_buffer);//-------------???????????check
       return -EEXIST;// 
     }
     //lets check if the parent dir exists
-    ret_val = s3fs_get_object(ctx->s3bucket,dir_name, &buffer,0,0);
+    ret_val = s3fs_get_object(ctx->s3bucket,dir_name, &the_buffer,0,0);
     if ( 0 > ret_val ){//if it doesn't
       free(given_path);
       return -EINVAL;//invalid input since the dir the user wants to create the file in doesn't exist
@@ -500,10 +502,12 @@ int fs_mknod(const char *path, mode_t mode, dev_t dev) {
     ret_val = s3fs_put_object(ctx->s3bucket, dir_name, (uint8_t *)fresh_parent,ret_val + sizeof(s3dirent_t));
 
     if ( ret_val == -1){//the object was not put
+      free(the_buffer);
       free( fresh_parent);
       free(given_path);
       return -EIO;
     }
+    free(the_buffer);
     free( fresh_parent);
     free(given_path);
     return 0;
@@ -546,9 +550,10 @@ int fs_open(const char *path, struct fuse_file_info *fi) {
     }
     free(given_path);
 
-    if( ret_val < 0){
-      return -EIO;
+    if( ret_val < 0){//ret_val is the number of bytes the object associated with file has and if its less than 0 we know it can't exist 
+      return -EEXIST;
     }
+    
     return 0;
 
 }
