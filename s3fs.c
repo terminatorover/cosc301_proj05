@@ -216,14 +216,14 @@ int fs_opendir(const char *path, struct fuse_file_info *fi) {
 			if ( entries[itr].type != TYPE_DIR){
 				free(given_path);
 				free(the_buffer);
-				return -EIO;
+				return 0;
 					
 			}
 			break ;
 		 }    
 
     
-    return 0;
+    return -EIO;
     
 }
 
