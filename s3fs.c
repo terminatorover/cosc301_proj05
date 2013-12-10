@@ -401,19 +401,33 @@ int fs_rmdir(const char *path) {
 
     }
     //if we are here we know that the object associated with the full path does not contian other metadata but for itself aka "."
-    if ( s3fs_remove_object(ctx->s3bucket, path) != 0) {//means that we had issues withremoving the corrrespoding object
+    if ( s3fs_remove_object(ctx->s3bucket, given_path) != 0) {//means that we had issues withremoving the corrrespoding object
       return -EIO;
     }
     //now we have removed the object , time to delete it's meta data
-    ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &buffer, 0, 0);
+    ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buffer, 0, 0);
     if ( ret_val < 0){//means that the supposed parent directory is not existent
       return -EIO;
     }
     //if we are here we know that the parent dir exists, now lets del the dir we are given
-    s3dirent_t * parent_dir = (s3dirent_t *) malloc(ret_val - sizeof(s3dirent_t));
-    s3dirent_t * 
-    
-    return -EIO;
+    s3dirent_t * fresh_parent = (s3dirent_t *) malloc(ret_val - sizeof(s3dirent_t));
+    s3dirent_t * dir_ents = (s3dirent_t *) the_buffer;
+    int count = sizeof(fresh_parent) / sizeof(s3dirent_t);//no dirents our new dir will have
+    int itr = 0;
+    for ( ; itr < count ; itr ++){
+      if ( 0 == strncmp(dir_ents[itr].name,base_name,256))//if entry is the the name of the file we want to get rid of 
+	continue;
+       } 
+     else{ fresh_parent[itr] = dir_ents[itr];
+     }
+    ret_val = s3fs_put_object(ctx->s3bucket, dir_name, (uint8_t *)fresh_parent,sizeof(s3dirent_t)*count);
+
+    if ( ret_val == -1){//the object was not put
+      free( fresh_parent);
+      return -EIO;
+    }
+    free( fresh_parent);
+    return 0;
 }
 
 
