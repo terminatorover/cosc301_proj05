@@ -385,6 +385,33 @@ int fs_rmdir(const char *path) {
     char * given_path = strdup(path);
     char * base_name = basename(given_path);
     char * dir_name = dirname(given_path);
+    ssize_t ret_val = 0;
+    uint8_t * the_buffer = NULL;
+    
+    ret_val =  s3fs_get_object(ctx->s3bucket, given_path, &the_buffer, 0, 0);
+    if ( ret_val < 0){//here we check if the object associated with the key even exists if it doesn't then there is no point in looking at the dir holding it and figuring out it's meta data
+      free(given_path);
+      
+      return -EIO;
+    }
+    //need to free the_buffer ???perhaps
+    if ( ret_val > sizeof(s3dirent_t )){//this means that there are more entires in the directory so we shouldn't delete it
+      free(given_path);
+      return -EIO;
+
+    }
+    //if we are here we know that the object associated with the full path does not contian other metadata but for itself aka "."
+    if ( s3fs_remove_object(ctx->s3bucket, path) != 0) {//means that we had issues withremoving the corrrespoding object
+      return -EIO;
+    }
+    //now we have removed the object , time to delete it's meta data
+    ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &buffer, 0, 0);
+    if ( ret_val < 0){//means that the supposed parent directory is not existent
+      return -EIO;
+    }
+    //if we are here we know that the parent dir exists, now lets del the dir we are given
+    s3dirent_t * parent_dir = (s3dirent_t *) malloc(ret_val - sizeof(s3dirent_t));
+    s3dirent_t * 
     
     return -EIO;
 }
