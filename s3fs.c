@@ -1,4 +1,4 @@
-/* This code is based on the fine code written by Joseph Pfeiffer for his
+ /* This code is based on the fine code written by Joseph Pfeiffer for his
    fuse system tutorial. */
 
 #include "s3fs.h"
@@ -427,6 +427,7 @@ int fs_rmdir(const char *path) {
       return -EIO;
     }
     free( fresh_parent);
+    free(given_path);
     return 0;
 }
 
@@ -446,7 +447,15 @@ int fs_rmdir(const char *path) {
 int fs_mknod(const char *path, mode_t mode, dev_t dev) {
     fprintf(stderr, "fs_mknod(path=\"%s\", mode=0%3o)\n", path, mode);
     s3context_t *ctx = GET_PRIVATE_DATA;
+    
+    char * dir_name = dirname(strdup(path));
+    char * base_name = basename(strdup(path));
+    
+    uint8_t * buffer = NULL;
+    ssize_t ret_val = 0;
+    
     return -EIO;
+
 }
 
 
