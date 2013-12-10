@@ -497,23 +497,23 @@ int fs_mknod(const char *path, mode_t mode, dev_t dev) {
     fresh_parent[itr] = new_file ;//pointers or not ?????????????????
 
     
-
+    //PUT THE OBJECT
     ret_val = s3fs_put_object(ctx->s3bucket, dir_name, (uint8_t *)fresh_parent,sizeof(s3dirent_t)*count);
 
     if ( ret_val == -1){//the object was not put
       free( fresh_parent);
+      free(given_path);
       return -EIO;
     }
     free( fresh_parent);
     free(given_path);
     return 0;
-}   
-				   
-    
-    
-    return -EIO;
-
 }
+
+
+    
+    
+
 
 
 /* 
