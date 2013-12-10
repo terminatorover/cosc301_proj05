@@ -115,7 +115,7 @@ int fs_getattr(const char *path, struct stat *statbuf) {
    ssize_t ret_val = 0; //used to recieve the number of bytes read from s3 file system
    uint8_t * the_buffer = NULL; //buffer to be used for getting object from s3 file system 
    
-   char * the_path = strudup(path);
+   char * the_path = strdup(path);
    char * dir_name = dirname(the_path);
    char * base_name = basename(the_path);
    
@@ -160,12 +160,12 @@ int fs_getattr(const char *path, struct stat *statbuf) {
 		*/
 		 {
 		  
-		  statbuf -> st_mode = entries[itr] -> mode;
-		  statbuf -> st_uid = entries[itr] -> uid;
-         	  statbuf -> st_gid = entries[itr] -> gid;
-    		  statbuf -> st_mtime = entries[itr]->mtime; 
-    		  statbuf -> st_dev = entries[itr] -> id; 
-		  statbuf -> st_size = entries[itr] -> size; 
+		  statbuf -> st_mode = entries[itr].mode;
+		  statbuf -> st_uid = entries[itr].uid;
+         	  statbuf -> st_gid = entries[itr].gid;
+    		  statbuf -> st_mtime = entries[itr].mtime; 
+    		  statbuf -> st_dev = entries[itr].id; 
+		  statbuf -> st_size = entries[itr].size; 
 		  break ;
 		 }
 	   }
@@ -313,7 +313,7 @@ int fs_mkdir(const char *path, mode_t mode) {
         int entity_count = ret_val / sizeof(s3dirent_t);//entitiy count gives us how many dirents we have
         
         for (; itr < entity_count; itr++ ){
-	  if (0== strncmp( entries[itr].name,base_name,256)){
+	  if (0 == strncmp( entries[itr].name,base_name,256)){
 		     if ( entries[itr].type == TYPE_DIR){
                        	        free(given_path);
                                 free(the_buffer);
@@ -413,11 +413,14 @@ int fs_rmdir(const char *path) {
     int count = sizeof(fresh_parent) / sizeof(s3dirent_t);//no dirents our new dir will have
     int itr = 0;
     for ( ; itr < count ; itr ++){
-      if ( 0 == strncmp(dir_ents[itr].name,base_name,256))//if entry is the the name of the file we want to get rid of 
-	{	continue;
-	}
-     else{ fresh_parent[itr] = dir_ents[itr];
-     }
+      
+      if ( (0 == strncmp(dir_ents[itr].name,base_name,256)) && (dir_ents[itr].type == TYPE_DIR))//if entry is the the name of the file we want to get rid of 
+	{continue;
+       }
+      else{
+	memcpy(&fresh_parent[itr],&dir_ents[itr],sizeof(s3dirent_t));
+      }
+    }
     ret_val = s3fs_put_object(ctx->s3bucket, dir_name, (uint8_t *)fresh_parent,sizeof(s3dirent_t)*count);
 
     if ( ret_val == -1){//the object was not put
@@ -487,13 +490,14 @@ int fs_mknod(const char *path, mode_t mode, dev_t dev) {
     int itr = 0;
     for ( ; itr < entry_count ; itr ++){
       fresh_parent[itr] = dir_ents[itr];
+      memcpy(&fresh_parent[itr],&dir_ents[itr],sizeof(s3dirent_t)) ;
      }
     //adding the new 
-    fresh_parent[itr] = new_file ;//pointers or not ?????????????????
+    memcpy(&fresh_parent[itr],new_file,sizeof(s3dirent_t)) ;//pointers or not ?????????????????
 
     
     //PUT THE OBJECT
-    ret_val = s3fs_put_object(ctx->s3bucket, dir_name, (uint8_t *)fresh_parent,sizeof(s3dirent_t)*count);
+    ret_val = s3fs_put_object(ctx->s3bucket, dir_name, (uint8_t *)fresh_parent,ret_val + sizeof(s3dirent_t));
 
     if ( ret_val == -1){//the object was not put
       free( fresh_parent);
@@ -736,6 +740,9 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Starting up FUSE file system.\n");
     int fuse_stat = fuse_main(argc, argv, &s3fs_ops, stateinfo);
     fprintf(stderr, "Startup function (fuse_main) returned %d\n", fuse_stat);
-    fs_init();
-    return fuse_stat;
+
+
+    //    return fuse_stat;
+    return 0;
+ 
 }
