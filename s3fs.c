@@ -118,9 +118,11 @@ int fs_getattr(const char *path, struct stat *statbuf) {
    uint8_t * the_buffer = NULL; //buffer to be used for getting object from s3 file system 
    
    char * the_path = strdup(path);
-   char * dir_name = dirname(the_path);
-   char * base_name = basename(the_path);
-
+   char * dir_name = dirname(strdup(path));
+   char * base_name = basename(strdup(path));
+   
+   fprintf(stderr,"dirname: %s",dir_name);
+      fprintf(stderr,"basename: %s",base_name);
     if ( 0 == strncmp(path,"/",strlen(path))){//check if we are being asked to get the atrr of root directory
       //   fprintf(stderr,"WE ARE SUPPOSED TO SEE THIS, because we aregetting atrributes of root dir");  
       printf("===========================================");
@@ -169,14 +171,15 @@ int fs_getattr(const char *path, struct stat *statbuf) {
 	
 	for (; itr < entity_count; itr++ ){
 	  fprintf(stderr,"in for loop \n");
-	  if (0 == strncmp(entries[itr].name,base_name,256))//check if any one of the metadata
+	  if (0 == strncmp(entries[itr].name,base_name,256))//check if any one of the metadata         
 		 /*stored in the directry dir_name matches the base name
 		 path       dirname   basename
 		 /usr/lib   /usr      lib
 		this means , when we store the name of a file or dir in another directory we just specify the name
 		and not the whole path
 		*/
-		 {
+	    {
+		 
 		   fprintf(stderr,"initalizing statbuf");
 		  
 		  statbuf -> st_mode = entries[itr].mode;
@@ -193,22 +196,24 @@ int fs_getattr(const char *path, struct stat *statbuf) {
 		      statbuf -> st_mtime = entries[itr].mtime;
 		      statbuf -> st_ctime = entries[itr].mtime;
 		      
-
+		      //	      free(the_path);
 		      free(the_buffer);
 	
 		      return 0;
-		 }
-	  
+	    } 
+
+
 	}
 	
 
 	
-       }
+    }
     
-	free(the_buffer);
+    //   free(the_path);
+   free(the_buffer);
 	
     fprintf(stderr,"THIS DOESN'T MAKE SENSE");
-    return -EEXIST; 
+    return -ENOENT; 
 
 }
 
@@ -229,8 +234,8 @@ int fs_opendir(const char *path, struct fuse_file_info *fi) {
     uint8_t * the_buffer = NULL;
     
     char * given_path = strdup(path);
-    char * base_name = basename(given_path);
-    char * dir_name = dirname(given_path);
+    char * base_name = basename(strdup(path));
+    char * dir_name = dirname(strdup(path));
     if (strcmp(path,"/") == 0){//if we are asked to open the root dir
    ret_val = s3fs_get_object(ctx->s3bucket, given_path, &the_buffer, 0, 0);
    if (ret_val < 0){
@@ -294,8 +299,8 @@ int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset
     uint8_t * the_buffer = NULL;
     
     char * given_path = strdup(path);
-    char * base_name = basename(given_path);
-    char * dir_name = dirname(given_path);
+    char * base_name = basename(strdup(path));
+    char * dir_name = dirname(strdup(path));
   
     ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buffer, 0, 0);//we pass in dir_name 
 	//because we want to get the object assoicated with a directory since all our
@@ -349,8 +354,8 @@ int fs_mkdir(const char *path, mode_t mode) {
     uint8_t * the_buffer = NULL;
     
     char * given_path = strdup(path);
-    char * base_name = basename(given_path);
-    char * dir_name = dirname(given_path);
+    char * base_name = basename(strdup(path));
+    char * dir_name = dirname(strdup(path));
 
 	ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buffer, 0, 0);
 	
@@ -431,8 +436,8 @@ int fs_rmdir(const char *path) {
     s3context_t *ctx = GET_PRIVATE_DATA;
     
     char * given_path = strdup(path);
-    char * base_name = basename(given_path);
-    char * dir_name = dirname(given_path);
+    char * base_name = basename(strdup(path));
+    char * dir_name = dirname(strdup(path));
     ssize_t ret_val = 0;
     uint8_t * the_buffer = NULL;
     
@@ -500,8 +505,8 @@ int fs_mknod(const char *path, mode_t mode, dev_t dev) {
     s3context_t *ctx = GET_PRIVATE_DATA;
     
     char * given_path = strdup(path);
-    char * dir_name = dirname(given_path);
-    char * base_name = basename(given_path);
+    char * dir_name = dirname(strdup(path));
+    char * base_name = basename(strdup(path));
     
     uint8_t * the_buffer = NULL;
     ssize_t ret_val = 0;
@@ -584,8 +589,8 @@ int fs_open(const char *path, struct fuse_file_info *fi) {
     s3context_t *ctx = GET_PRIVATE_DATA;
     char * given_path = strdup(path);
 
-    char * dir_name = dirname(given_path);
-    char * base_name = basename(given_path);
+    char * dir_name = dirname(strdup(path));
+    char * base_name = basename(strdup(path));
     
     uint8_t * the_buffer = NULL;
     ssize_t ret_val = 0;
