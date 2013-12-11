@@ -1,4 +1,3 @@
-
  /* This code is based on the fine code written by Joseph Pfeiffer for his
    fuse system tutorial. */
 
@@ -71,13 +70,16 @@ void * fs_init(struct fuse_conn_info *conn)
     root_dir -> type = TYPE_DIR;
     memset( root_dir -> name, 0, 256);
     strncpy(root_dir -> name ,".",1);
-    root_dir -> mode = TYPE_DIR;
+    root_dir -> mode = ROOT_DIR_MODE;
     root_dir ->uid = fuse_get_context()->uid;
     root_dir ->gid = fuse_get_context()->gid;
     root_dir -> size = 0 ;
     root_dir -> mtime=  the_time;
-    root_dir -> id = 0 ; 
-
+    //root_dir -> id = 0 ; 
+    //    root_dir -> blocks = 0;
+    //    root_dir -> nlink = 0;
+    
+    
     ret_val = s3fs_put_object(ctx->s3bucket, "/",(uint8_t *) root_dir, sizeof(s3dirent_t));
      
       if ( ret_val == -1)//meaning  that no object was put
@@ -87,7 +89,7 @@ void * fs_init(struct fuse_conn_info *conn)
 	}    
     free(root_dir);
 
-     return ctx;
+    return ctx;
 }
 
 /*
@@ -118,32 +120,46 @@ int fs_getattr(const char *path, struct stat *statbuf) {
    char * the_path = strdup(path);
    char * dir_name = dirname(the_path);
    char * base_name = basename(the_path);
-   
+
     if ( 0 == strncmp(path,"/",strlen(path))){//check if we are being asked to get the atrr of root directory
+      //   fprintf(stderr,"WE ARE SUPPOSED TO SEE THIS, because we aregetting atrributes of root dir");  
+      printf("===========================================");
     	ret_val = s3fs_get_object(ctx->s3bucket, path, &the_buffer, 0, 0);
     	if ( ret_val < 0){//this is only true if we were not able to return the object
+	  	  fprintf(stderr,"THIS MEANS THE FOLDER DOESN'T EXIST");
      		return -EIO;
      		}
      	
 
-    s3dirent_t * root_dir = (s3dirent_t *)the_buffer;
-    statbuf -> st_mode = root_dir -> mode;
-    statbuf -> st_uid = root_dir -> uid;
-    statbuf -> st_gid = root_dir -> gid;
-    statbuf -> st_mtime = root_dir ->mtime; 
-    statbuf -> st_dev = root_dir -> id; 
-    statbuf -> st_size = root_dir -> size; 
-    
+    s3dirent_t * our_obj = (s3dirent_t *)the_buffer;
+    s3dirent_t root_dir = our_obj[0];
+    statbuf -> st_mode = root_dir.mode;
+    statbuf -> st_uid = root_dir.uid;
+    statbuf -> st_gid = root_dir.gid;
+    statbuf -> st_mtime = root_dir.mtime; 
+    statbuf -> st_dev = 0 ;
+    statbuf -> st_size = 0;
+    statbuf -> st_nlink = 0;
+    statbuf -> st_blocks = 0 ; 
+    statbuf -> st_atime = root_dir.mtime;
+    statbuf -> st_mtime = root_dir.mtime;
+    statbuf -> st_ctime = root_dir.mtime;
+
     free(the_buffer);//because s3fs_get_object uses the_buffer as a pointer to a malloced object()
     free(the_path);
-}else { //now we know that we are not being asekd about the atrr of the root aka "/"
+      fprintf(stderr,"I JUST RETURNED OK");
+      printf("-00000000000000000000000000---------------------");
+    return 0;
+    }else { //now we know that we are not being asekd about the atrr of the root aka "/"
 	ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buffer, 0, 0);//we pass in dir_name 
+	fprintf(stderr,"I should not be seeing this");
 	//because we want to get the object assoicated with a directory since all our
 	//meta data be it for a file or directory is in a directory (we have oursetup
 	//such that file keys don't contain objects with metadata)
 	
 	if ( ret_val < 0 ){//means we didn't get our object back 
 		free(the_path);
+          	  fprintf(stderr,"THIS MEANS THE FOLDER DOESN'T EXIST");
 		return -EIO;
 	}
 	int itr = 0;
@@ -173,7 +189,8 @@ int fs_getattr(const char *path, struct stat *statbuf) {
 	free(entries);
 	free(the_buffer);
 	
-	}
+    }
+    fprintf(stderr,"THIS DOESN'T MAKE SENSE");
 return 0; 
 
 }
@@ -747,7 +764,7 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Startup function (fuse_main) returned %d\n", fuse_stat);
 
 
-    //    return fuse_stat;
-    return 0;
+    return fuse_stat;
+    //      return 0;
  
 }
