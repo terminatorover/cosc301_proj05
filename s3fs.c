@@ -152,22 +152,24 @@ int fs_getattr(const char *path, struct stat *statbuf) {
     return 0;
     }else { //now we know that we are not being asekd about the atrr of the root aka "/"
 	ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buffer, 0, 0);//we pass in dir_name 
-	fprintf(stderr,"I should not be seeing this");
+	fprintf(stderr,"I should be seeing this");
 	//because we want to get the object assoicated with a directory since all our
 	//meta data be it for a file or directory is in a directory (we have oursetup
 	//such that file keys don't contain objects with metadata)
 	
 	if ( ret_val < 0 ){//means we didn't get our object back 
 		free(the_path);
-          	  fprintf(stderr,"THIS MEANS THE FOLDER DOESN'T EXIST");
+          	  fprintf(stderr,"THIS MEANS THE PARENT FOLDER DOESN'T EXIST");
 		return -EIO;
 	}
 	int itr = 0;
 	s3dirent_t * entries = (s3dirent_t *)the_buffer;
+	
 	int entity_count = ret_val / sizeof(s3dirent_t);//entitiy count gives us how many dirents we have
 	
 	for (; itr < entity_count; itr++ ){
-		 if (0 == strncmp(entries[itr].name,base_name,256))//check if any one of the metadata
+	  fprintf(stderr,"in for loop \n");
+	  if (0 == strncmp(entries[itr].name,base_name,256))//check if any one of the metadata
 		 /*stored in the directry dir_name matches the base name
 		 path       dirname   basename
 		 /usr/lib   /usr      lib
@@ -175,23 +177,38 @@ int fs_getattr(const char *path, struct stat *statbuf) {
 		and not the whole path
 		*/
 		 {
+		   fprintf(stderr,"initalizing statbuf");
 		  
 		  statbuf -> st_mode = entries[itr].mode;
 		  statbuf -> st_uid = entries[itr].uid;
          	  statbuf -> st_gid = entries[itr].gid;
     		  statbuf -> st_mtime = entries[itr].mtime; 
-    		  statbuf -> st_dev = entries[itr].id; 
+    		  statbuf -> st_dev = 0; 
 		  statbuf -> st_size = entries[itr].size; 
-		  break ;
-		 }
-	   }
+		      statbuf -> st_dev = 0 ;
+
+		      statbuf -> st_nlink = 0;
+		      statbuf -> st_blocks = 0 ; 
+		      statbuf -> st_atime = entries[itr].mtime;
+		      statbuf -> st_mtime = entries[itr].mtime;
+		      statbuf -> st_ctime = entries[itr].mtime;
+		      
+
+		      free(the_buffer);
 	
-	free(entries);
+		      return 0;
+		 }
+	  
+	}
+	
+
+	
+       }
+    
 	free(the_buffer);
 	
-    }
     fprintf(stderr,"THIS DOESN'T MAKE SENSE");
-return 0; 
+    return -EEXIST; 
 
 }
 
