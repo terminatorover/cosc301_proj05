@@ -214,7 +214,21 @@ int fs_opendir(const char *path, struct fuse_file_info *fi) {
     char * given_path = strdup(path);
     char * base_name = basename(given_path);
     char * dir_name = dirname(given_path);
-  
+    if (strcmp(path,"/") == 0){//if we are asked to open the root dir
+   ret_val = s3fs_get_object(ctx->s3bucket, given_path, &the_buffer, 0, 0);
+   if (ret_val < 0){
+     free(given_path);
+     return -EIO;
+   }
+   free(the_buffer);
+   return 0;
+   
+    }
+	
+
+
+
+
     ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buffer, 0, 0);//we pass in dir_name 
 	//because we want to get the object assoicated with a directory since all our
 	//meta data be it for a file or directory is in a directory (we have oursetup
