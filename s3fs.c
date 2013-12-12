@@ -122,7 +122,7 @@ int fs_getattr(const char *path, struct stat *statbuf) {
    char * base_name = basename(strdup(path));
    
    fprintf(stderr,"dirname: %s",dir_name);
-      fprintf(stderr,"basename: %s",base_name);
+   fprintf(stderr,"basename: %s",base_name);
     if ( 0 == strncmp(path,"/",strlen(path))){//check if we are being asked to get the atrr of root directory
       //   fprintf(stderr,"WE ARE SUPPOSED TO SEE THIS, because we aregetting atrributes of root dir");  
       printf("===========================================");
@@ -160,7 +160,7 @@ int fs_getattr(const char *path, struct stat *statbuf) {
 	//such that file keys don't contain objects with metadata)
 	
 	if ( ret_val < 0 ){//means we didn't get our object back 
-		free(the_path);
+	  //	free(the_path);
           	  fprintf(stderr,"THIS MEANS THE PARENT FOLDER DOESN'T EXIST");
 		return -EIO;
 	}
@@ -197,7 +197,7 @@ int fs_getattr(const char *path, struct stat *statbuf) {
 		      statbuf -> st_ctime = entries[itr].mtime;
 		      
 		      //	      free(the_path);
-		      free(the_buffer);
+		      //	      free(the_buffer);
 	
 		      return 0;
 	    } 
@@ -210,7 +210,7 @@ int fs_getattr(const char *path, struct stat *statbuf) {
     }
     
     //   free(the_path);
-   free(the_buffer);
+    //   free(the_buffer);
 	
     fprintf(stderr,"THIS DOESN'T MAKE SENSE");
     return -ENOENT; 
