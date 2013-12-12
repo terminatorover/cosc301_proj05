@@ -389,7 +389,7 @@ int fs_mkdir(const char *path, mode_t mode) {
 	
        s3dirent_t * new_obj = (s3dirent_t *)malloc(sizeof(s3dirent_t)*(entity_count +1));
     
-       fprintf(stderr,"%d the number of s3dirents\n",entity_count);
+       fprintf(stderr,"%d the number of s3dirents in new_obj \n",entity_count+1);
        //       s3dirent_t * et = entries;
        int index =0;
        for (; index < entity_count ; index ++)
@@ -402,7 +402,7 @@ int fs_mkdir(const char *path, mode_t mode) {
        	 itr ++;
   //     	 index ++;
        }
-
+       fprintf(stderr,"%d index , should be 1\n",index);
        //       free(entries);
        s3dirent_t * new = NULL; 
        s3dirent_t * the_dir = (s3dirent_t *) malloc (sizeof(s3dirent_t));
@@ -421,18 +421,18 @@ int fs_mkdir(const char *path, mode_t mode) {
 
     //    new_obj[index] = *the_dir ;//our new directory meta data goes in the last cell of the new ojbect we are about to pass
     memcpy(&new_obj[index],the_dir,sizeof(s3dirent_t)) ;
-    /*
+    
     //to check if the new ojbect is what we think it is 
     int loop = 0;
     for (; loop < ( entity_count+1); loop++){
       
-      fprintf(stderr,"The name of the current file in bucket: %s \n",&new_obj[index].name);
+      fprintf(stderr,"The name of the current file in bucket: %s \n",&new_obj[loop].name);
       
-    }*/
+    }
 
-
-
-    ret_val = s3fs_put_object(ctx->s3bucket,dir_name,(uint8_t *) new_obj, sizeof(new_obj));
+    
+    
+  ret_val = s3fs_put_object(ctx->s3bucket,dir_name,(uint8_t *) new_obj, sizeof(s3dirent_t)+(ret_val));
     
     
     fprintf(stderr,"--The name of the new file: %s\n",&new_obj[index].name);
@@ -449,10 +449,10 @@ int fs_mkdir(const char *path, mode_t mode) {
           return -EIO;
         }    
         
-      ret_val = s3fs_put_object(ctx->s3bucket,path,(uint8_t *) the_dir, sizeof(new_obj));
-            if ( ret_val < 0)//meaning  that no object was put
+      ret_val = s3fs_put_object(ctx->s3bucket,path,(uint8_t *) the_dir, sizeof(s3dirent_t));
+            if ( ret_val < 0 )//meaning  that no object was put
         {
-	  fprintf(stderr,"we were ---UNABLE----to put it the new file directly into S3 with the key as its path ");
+	  fprintf(stderr,"we were ---UNABLE----to put it the new file directly into S3 with the key as its path \n");
           free(new_obj);
           free(the_dir);
           free(given_path);
@@ -461,13 +461,19 @@ int fs_mkdir(const char *path, mode_t mode) {
         } 
 	    // /??????????????????????????????????????????????????
     free(the_buffer);
-    ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buffer, 0, 0);//we pass in dir_name 
-    fprintf(stderr,"%d THIS HAD BETTER NOT BE 0",ret_val);
+    ssize_t re_val = 0;
+    re_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buffer, 0, 0);//we pass in dir_name 
+    fprintf(stderr,"%d the number of bytes retrived----------\n",re_val);
+    fprintf(stderr,"%d the size of a stridnet---\n",sizeof(s3dirent_t));
+    if ( re_val == -1){
+      fprintf(stderr,"%d We COULDN'T GET THE FILE");
+    }
+    fprintf(stderr,"%d THIS HAD BETTER NOT BE 0",re_val/(sizeof(s3dirent_t)));
 	int itj = 0;
 	s3dirent_t * entr = (s3dirent_t *)the_buffer;
 	
-	int e_count = ret_val / sizeof(s3dirent_t);//entitiy count gives us how many dirents we have
-	fprintf(stderr,"%d  number of s3drirents", entity_count);
+	int e_count = re_val / sizeof(s3dirent_t);//entitiy count gives us how many dirents we have
+	fprintf(stderr,"%d  number of s3drirents\n:EXPECT 2", e_count);
 	
 	for (; itj < e_count; itj++ ){
 
@@ -479,7 +485,7 @@ int fs_mkdir(const char *path, mode_t mode) {
           free(the_dir);
           free(given_path);
           free(the_buffer);
-	  fprintf(stderr,"we were ----ABLE-- to put the file in %s",dir_name);
+	  fprintf(stderr,"we were ----ABLE-- to put the file in %s\n",dir_name);
     return 0;
 }
 
