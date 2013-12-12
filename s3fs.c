@@ -237,24 +237,27 @@ int fs_opendir(const char *path, struct fuse_file_info *fi) {
     ssize_t ret_val = 0;
     uint8_t * the_buffer = NULL;
     
-    char * given_path = strdup(path);
+    //    char * given_path = strdup(path);
     char * base_name = basename(strdup(path));
     char * dir_name = dirname(strdup(path));
     if (strcmp(path,"/") == 0){//if we are asked to open the root dir
-   ret_val = s3fs_get_object(ctx->s3bucket, given_path, &the_buffer, 0, 0);
+   ret_val = s3fs_get_object(ctx->s3bucket, path, &the_buffer, 0, 0);
    if (ret_val < 0){
-     free(given_path);
-     return -EIO;
+     //     free(given_path);
+     return -EEXIST;
    }
    free(the_buffer);
    return 0;
    
     }
-	
-
-
-
-
+   ret_val = s3fs_get_object(ctx->s3bucket, path, &the_buffer, 0, 0);
+   if (ret_val < 0){
+     //     free(given_path);
+     return -EEXIST;
+   }
+ 
+    
+    /*============================ PREVIOUS APPROACH========================================
     ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buffer, 0, 0);//we pass in dir_name 
 	//because we want to get the object assoicated with a directory since all our
 	//meta data be it for a file or directory is in a directory (we have oursetup
@@ -262,7 +265,7 @@ int fs_opendir(const char *path, struct fuse_file_info *fi) {
 	
 	if ( ret_val < 0 ){//means we didn't get our object back 
 		free(given_path);
-		return -EIO;
+		return -EEXIST;
 	}
 	int itr = 0;
 	s3dirent_t * entries = (s3dirent_t *)the_buffer;
@@ -276,14 +279,18 @@ int fs_opendir(const char *path, struct fuse_file_info *fi) {
 				return 0;
     			}
 			break ;
-	 }    
+	  }    
 
     
 
 	}
-	free(given_path);
+	*/
+//	free(given_path);
+if (the_buffer != NULL){
 	free(the_buffer);
-    return -EEXIST;
+	
+ }
+ return 0;
 }
 
 
