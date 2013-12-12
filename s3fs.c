@@ -644,7 +644,9 @@ int fs_mknod(const char *path, mode_t mode, dev_t dev) {
     
     //PUT THE OBJECT
     ret_val = s3fs_put_object(ctx->s3bucket, dir_name, (uint8_t *)fresh_parent,ret_val + sizeof(s3dirent_t));
-
+    
+    
+    ret_val = s3fs_put_object(ctx->s3bucket,path, (uint8_t *)fresh_parent,0);
     if ( ret_val == -1){//the object was not put
       free(the_buffer);
       free( fresh_parent);
@@ -654,6 +656,7 @@ int fs_mknod(const char *path, mode_t mode, dev_t dev) {
     free(the_buffer);
     free( fresh_parent);
     free(given_path);
+    fprintf(stderr,"\nFILE JUST GOT MADE\n");
     return 0;
 }
 
@@ -695,10 +698,10 @@ int fs_open(const char *path, struct fuse_file_info *fi) {
     free(given_path);
 
     if( ret_val < 0){//ret_val is the number of bytes the object associated with file has and if its less than 0 we know it can't exist 
-      return 0;
+      return -EIO;
     }
     
-    return -EEXIST;
+    return 0;
 
 }
 
@@ -714,7 +717,14 @@ int fs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
     fprintf(stderr, "fs_read(path=\"%s\", buf=%p, size=%d, offset=%d)\n",
           path, buf, (int)size, (int)offset);
     s3context_t *ctx = GET_PRIVATE_DATA;
-    return -EIO;
+    ssize_t ret_val = 0;
+    uint8_t * new = (uint8_t *) buf;
+    uint8_t ** to_pass = & new;
+    ret_val =  s3fs_get_object(ctx->s3bucket, path,to_pass ,(ssize_t)offset,(ssize_t)size);
+    if ( -1 == ret_val ){
+      return -EIO;
+    }
+    return 0;
 }
 
 
@@ -728,7 +738,14 @@ int fs_write(const char *path, const char *buf, size_t size, off_t offset, struc
     fprintf(stderr, "fs_write(path=\"%s\", buf=%p, size=%d, offset=%d)\n",
           path, buf, (int)size, (int)offset);
     s3context_t *ctx = GET_PRIVATE_DATA;
-    return -EIO;
+    const uint8_t * to_write = &((uint8_t *) buf )[(int) offset];
+    ssize_t ret_val = 0 ;
+    ret_val = s3fs_put_object(ctx->s3bucket, path,to_write, (ssize_t) size);
+     if ( -1 == ret_val ){
+       return -EIO;
+    }
+     return 0;
+     
 }
 
 
