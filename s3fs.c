@@ -602,7 +602,8 @@ int fs_mknod(const char *path, mode_t mode, dev_t dev) {
     ssize_t ret_val = 0;
     time_t current_time  =  time(NULL);
     //lets check if the file exists
-    ret_val = s3fs_get_object(ctx->s3bucket, given_path, &the_buffer,0,0);
+    ret_val = s3fs_get_object(ctx->s3bucket, path, &the_buffer,0,0);
+    
     free(the_buffer);
     if ( 0 <= ret_val){//the file exists
       free(given_path);
@@ -687,17 +688,17 @@ int fs_open(const char *path, struct fuse_file_info *fi) {
     
     size_t path_len = strlen(path);
     
-    ret_val =  s3fs_get_object(ctx->s3bucket, given_path, &the_buffer, 0, 0);
+    ret_val =  s3fs_get_object(ctx->s3bucket, path, &the_buffer, 0, 0);
     if ( NULL != the_buffer){//the file doesn't exist
       free(the_buffer);
     }
     free(given_path);
 
     if( ret_val < 0){//ret_val is the number of bytes the object associated with file has and if its less than 0 we know it can't exist 
-      return -EEXIST;
+      return 0;
     }
     
-    return 0;
+    return -EEXIST;
 
 }
 
@@ -747,7 +748,7 @@ int fs_write(const char *path, const char *buf, size_t size, off_t offset, struc
 int fs_release(const char *path, struct fuse_file_info *fi) {
     fprintf(stderr, "fs_release(path=\"%s\")\n", path);
     s3context_t *ctx = GET_PRIVATE_DATA;
-    return -EIO;
+    return 0;
 }
 
 
