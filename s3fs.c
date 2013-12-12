@@ -364,6 +364,7 @@ int fs_mkdir(const char *path, mode_t mode) {
     fprintf(stderr, "fs_mkdir(path=\"%s\", mode=0%3o)\n", path, mode);
     s3context_t *ctx = GET_PRIVATE_DATA;
 
+
     time_t the_time = time(NULL);
     ssize_t ret_val = 0;
     uint8_t * the_buffer = NULL;
