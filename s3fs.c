@@ -406,7 +406,7 @@ int fs_mkdir(const char *path, mode_t mode) {
        for (; index < entity_count ; index ++)
        {
        //while ( itr != NULL){
-	 fprintf(stderr,"twice\n");
+	 //	 fprintf(stderr,"twice\n");
        	 //new_obj[index]= *et ;
 	 fprintf(stderr,"The name of the current file in bucket: %s \n",entries[index].name);
 	 memcpy(&new_obj[index],&entries[index],sizeof(s3dirent_t)) ;
@@ -459,8 +459,24 @@ int fs_mkdir(const char *path, mode_t mode) {
           free(the_buffer);
           return -EIO;
         }    
+      s3dirent_t * the_dirr = (s3dirent_t *) malloc (sizeof(s3dirent_t));//this is tthe obj for when the key is the full path the name of s3dirent_t is "."
+    
+
+    the_dirr -> type = TYPE_DIR;
+    memset( the_dirr -> name, 0, 256);
+    strncpy(the_dirr -> name ,".",1);
+
+    the_dirr ->uid = fuse_get_context()->uid;
+    the_dirr ->gid = fuse_get_context()->gid;
+    the_dirr -> size = 0 ;
+    the_dirr -> mtime=  the_time;
+    the_dirr -> id = 0 ; 
+    the_dirr -> mode = S_IFDIR; //c?????????????????????????????check if this is right 
+
+    //    new_obj[index] = *the_dir ;//our new directory meta data goes in the last cell of the new ojbect we are about to pass
+    memcpy(&new_obj[index],the_dir,sizeof(s3dirent_t)) ;
         
-      ret_val = s3fs_put_object(ctx->s3bucket,path,(uint8_t *) the_dir, sizeof(s3dirent_t));
+      ret_val = s3fs_put_object(ctx->s3bucket,path,(uint8_t *) the_dirr, sizeof(s3dirent_t));
             if ( ret_val < 0 )//meaning  that no object was put
         {
 	  fprintf(stderr,"we were ---UNABLE----to put it the new file directly into S3 with the key as its path \n");
