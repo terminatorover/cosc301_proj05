@@ -1,4 +1,4 @@
- /* This code is based on the fine code written by Joseph Pfeiffer for his
+/* This code is based on the fine code written by Joseph Pfeiffer for his
    fuse system tutorial. */
 
 #include "s3fs.h"
@@ -121,14 +121,15 @@ int fs_getattr(const char *path, struct stat *statbuf) {
    char * dir_name = dirname(strdup(path));
    char * base_name = basename(strdup(path));
    
-   fprintf(stderr,"dirname: %s",dir_name);
-   fprintf(stderr,"basename: %s",base_name);
+   fprintf(stderr,"dirname: %s\n",dir_name);
+   fprintf(stderr,"basename: %s\n",base_name);
     if ( 0 == strncmp(path,"/",strlen(path))){//check if we are being asked to get the atrr of root directory
       //   fprintf(stderr,"WE ARE SUPPOSED TO SEE THIS, because we aregetting atrributes of root dir");  
       printf("===========================================");
     	ret_val = s3fs_get_object(ctx->s3bucket, path, &the_buffer, 0, 0);
     	if ( ret_val < 0){//this is only true if we were not able to return the object
 	  	  fprintf(stderr,"THIS MEANS THE FOLDER DOESN'T EXIST");
+		  free(the_path);
      		return -EIO;
      		}
      	
@@ -149,12 +150,12 @@ int fs_getattr(const char *path, struct stat *statbuf) {
 
     free(the_buffer);//because s3fs_get_object uses the_buffer as a pointer to a malloced object()
     free(the_path);
-      fprintf(stderr,"I JUST RETURNED OK");
-      printf("-00000000000000000000000000---------------------");
+      fprintf(stderr,"I JUST RETURNED OK the root dir exsists");
+      //      printf("-00000000000000000000000000---------------------");
     return 0;
     }else { //now we know that we are not being asekd about the atrr of the root aka "/"
 	ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buffer, 0, 0);//we pass in dir_name 
-	fprintf(stderr,"I should be seeing this");
+	fprintf(stderr,"THE PARENT of the base name: %s, exists",base_name);
 	//because we want to get the object assoicated with a directory since all our
 	//meta data be it for a file or directory is in a directory (we have oursetup
 	//such that file keys don't contain objects with metadata)
@@ -168,10 +169,13 @@ int fs_getattr(const char *path, struct stat *statbuf) {
 	s3dirent_t * entries = (s3dirent_t *)the_buffer;
 	
 	int entity_count = ret_val / sizeof(s3dirent_t);//entitiy count gives us how many dirents we have
+	fprintf(stderr,"%d  number of s3drirents", entity_count);
 	
 	for (; itr < entity_count; itr++ ){
-	  fprintf(stderr,"in for loop \n");
-	  if (0 == strncmp(entries[itr].name,base_name,256))//check if any one of the metadata         
+
+	  fprintf(stderr,"DIRS: %s-----\n",&entries[itr].name);
+	  if (0 == strncmp(entries[itr].name,base_name,256))//check if any one of the metadata     
+
 		 /*stored in the directry dir_name matches the base name
 		 path       dirname   basename
 		 /usr/lib   /usr      lib
@@ -212,7 +216,7 @@ int fs_getattr(const char *path, struct stat *statbuf) {
     //   free(the_path);
     //   free(the_buffer);
 	
-    fprintf(stderr,"THIS DOESN'T MAKE SENSE");
+    fprintf(stderr,"THERE IS NO FILE BY THE NAME: %s ",base_name);
     return -ENOENT; 
 
 }
@@ -302,7 +306,7 @@ int fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset
     char * base_name = basename(strdup(path));
     char * dir_name = dirname(strdup(path));
   
-    ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buffer, 0, 0);//we pass in dir_name 
+
 	//because we want to get the object assoicated with a directory since all our
 	//meta data be it for a file or directory is in a directory (we have oursetup
 	//such that file keys don't contain objects with metadata)
@@ -348,7 +352,7 @@ int fs_releasedir(const char *path, struct fuse_file_info *fi) {
 int fs_mkdir(const char *path, mode_t mode) {
     fprintf(stderr, "fs_mkdir(path=\"%s\", mode=0%3o)\n", path, mode);
     s3context_t *ctx = GET_PRIVATE_DATA;
-    mode |= S_IFDIR;
+
     time_t the_time = time(NULL);
     ssize_t ret_val = 0;
     uint8_t * the_buffer = NULL;
@@ -356,6 +360,8 @@ int fs_mkdir(const char *path, mode_t mode) {
     char * given_path = strdup(path);
     char * base_name = basename(strdup(path));
     char * dir_name = dirname(strdup(path));
+   fprintf(stderr,"dirname: %s\n",dir_name);
+   fprintf(stderr,"basename: %s\n",base_name);
 
 	ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buffer, 0, 0);
 	
@@ -366,8 +372,10 @@ int fs_mkdir(const char *path, mode_t mode) {
         int itr = 0;
         s3dirent_t * entries = (s3dirent_t *)the_buffer;
         int entity_count = ret_val / sizeof(s3dirent_t);//entitiy count gives us how many dirents we have
-        
+        /*
         for (; itr < entity_count; itr++ ){
+	  fprintf(stderr,"NAME OF ENTRY: %s \n", entries[itr].name);
+	  fprintf(stderr,"BASE NAME: %s \n",base_name);
 	  if (0 == strncmp( entries[itr].name,base_name,256)){
 		     if ( entries[itr].type == TYPE_DIR){
                        	        free(given_path);
@@ -377,28 +385,32 @@ int fs_mkdir(const char *path, mode_t mode) {
                         
                  }
                         
-       }
+		 }*/
+	
        s3dirent_t * new_obj = (s3dirent_t *)malloc(sizeof(s3dirent_t)*(entity_count +1));
     
-       
-       s3dirent_t * et = entries;
+       fprintf(stderr,"%d the number of s3dirents\n",entity_count);
+       //       s3dirent_t * et = entries;
        int index =0;
        for (; index < entity_count ; index ++)
        {
        //while ( itr != NULL){
-       	 new_obj[index]= *et ;
+	 fprintf(stderr,"twice\n");
+       	 //new_obj[index]= *et ;
+	 fprintf(stderr,"The name of the current file in bucket: %s \n",entries[index].name);
+	 memcpy(&new_obj[index],&entries[index],sizeof(s3dirent_t)) ;
        	 itr ++;
   //     	 index ++;
        }
 
-       free(entries);
+       //       free(entries);
        s3dirent_t * new = NULL; 
        s3dirent_t * the_dir = (s3dirent_t *) malloc (sizeof(s3dirent_t));
     
 
     the_dir -> type = TYPE_DIR;
     memset( the_dir -> name, 0, 256);
-    strncpy(the_dir -> name ,base_name,1);
+    strncpy(the_dir -> name ,base_name,strlen(base_name));
 
     the_dir ->uid = fuse_get_context()->uid;
     the_dir ->gid = fuse_get_context()->gid;
@@ -406,13 +418,30 @@ int fs_mkdir(const char *path, mode_t mode) {
     the_dir -> mtime=  the_time;
     the_dir -> id = 0 ; 
     the_dir -> mode = S_IFDIR; //c?????????????????????????????check if this is right 
-    
-    new_obj[index] = *the_dir ;//our new directory meta data goes in the last cell of the new ojbect we are about to pass
-   
+
+    //    new_obj[index] = *the_dir ;//our new directory meta data goes in the last cell of the new ojbect we are about to pass
+    memcpy(&new_obj[index],the_dir,sizeof(s3dirent_t)) ;
+    /*
+    //to check if the new ojbect is what we think it is 
+    int loop = 0;
+    for (; loop < ( entity_count+1); loop++){
+      
+      fprintf(stderr,"The name of the current file in bucket: %s \n",&new_obj[index].name);
+      
+    }*/
+
+
+
     ret_val = s3fs_put_object(ctx->s3bucket,dir_name,(uint8_t *) new_obj, sizeof(new_obj));
+    
+    
+    fprintf(stderr,"--The name of the new file: %s\n",&new_obj[index].name);
+
+    
      
-      if ( ret_val == -1)//meaning  that no object was put
+      if ( ret_val < 0)//meaning  that no object was put
         {
+	  fprintf(stderr,"we were ---UNABLE----to put it the new file in the PARENT");
           free(new_obj);
           free(the_dir);
           free(given_path);
@@ -420,10 +449,37 @@ int fs_mkdir(const char *path, mode_t mode) {
           return -EIO;
         }    
         
+      ret_val = s3fs_put_object(ctx->s3bucket,path,(uint8_t *) the_dir, sizeof(new_obj));
+            if ( ret_val < 0)//meaning  that no object was put
+        {
+	  fprintf(stderr,"we were ---UNABLE----to put it the new file directly into S3 with the key as its path ");
           free(new_obj);
           free(the_dir);
           free(given_path);
           free(the_buffer);
+          return -EIO;
+        } 
+	    // /??????????????????????????????????????????????????
+    free(the_buffer);
+    ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buffer, 0, 0);//we pass in dir_name 
+    fprintf(stderr,"%d THIS HAD BETTER NOT BE 0",ret_val);
+	int itj = 0;
+	s3dirent_t * entr = (s3dirent_t *)the_buffer;
+	
+	int e_count = ret_val / sizeof(s3dirent_t);//entitiy count gives us how many dirents we have
+	fprintf(stderr,"%d  number of s3drirents", entity_count);
+	
+	for (; itj < e_count; itj++ ){
+
+	  fprintf(stderr,"DIRS: %s-----\n",&entr[itj].name);
+	} 
+	//??????????????????????????????????????????
+
+          free(new_obj);
+          free(the_dir);
+          free(given_path);
+          free(the_buffer);
+	  fprintf(stderr,"we were ----ABLE-- to put the file in %s",dir_name);
     return 0;
 }
 
