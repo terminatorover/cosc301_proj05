@@ -1,4 +1,4 @@
-/* This code is based on the fine code written by Joseph Pfeiffer for his
+/*s This code is based on the fine code written by Joseph Pfeiffer for his
    fuse system tutorial. */
 
 #include "s3fs.h"
@@ -719,11 +719,18 @@ int fs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
     s3context_t *ctx = GET_PRIVATE_DATA;
     ssize_t ret_val = 0;
     uint8_t * new = (uint8_t *) buf;
-    uint8_t ** to_pass = & new;
-    ret_val =  s3fs_get_object(ctx->s3bucket, path,to_pass ,(ssize_t)offset,(ssize_t)size);
+    uint8_t** to_pass = & new;
+    fprintf(stderr,"\nNO OF BYTES TO READ: %d\n", (int) size);
+    
+    ret_val =  s3fs_get_object(ctx->s3bucket, path,to_pass /*&((uint8_t *) buf)*/ ,(ssize_t)offset,(ssize_t)size);
+    fprintf(stderr,"\nNO OF BYTES ACTUALLY READ: %d\n",(int)ret_val);
     if ( -1 == ret_val ){
-      return -EIO;
+      return -EOF;
     }
+    buf = (char *) new;
+    fprintf(stderr,"\n IN READ, READ BUF: %s\n",buf);
+    fprintf(stderr,"\n IN READ, READ TO_PASS: %s\n",(char *) new);
+    
     return 0;
 }
 
@@ -739,12 +746,24 @@ int fs_write(const char *path, const char *buf, size_t size, off_t offset, struc
           path, buf, (int)size, (int)offset);
     s3context_t *ctx = GET_PRIVATE_DATA;
     const uint8_t * to_write = &((uint8_t *) buf )[(int) offset];
+    char * text = (char * ) to_write; 
+    fprintf(stderr,"message to be writte: %s", text);
+    fprintf(stderr,"Write %d bytes ", (int) size);
     ssize_t ret_val = 0 ;
+    
     ret_val = s3fs_put_object(ctx->s3bucket, path,to_write, (ssize_t) size);
-     if ( -1 == ret_val ){
+    fprintf(stderr,"\n BYtes Writeen to file %d bytes\n ", (int) ret_val);
+    
+     if ( 0 >  ret_val ){
+       fprintf(stderr,"\nNOTHIGN WAS ACTUALLY WRITTTEN\n");
        return -EIO;
     }
-     return 0;
+     ssize_t re_val = 0;
+     uint8_t * buff = NULL;
+     re_val = s3fs_get_object(ctx->s3bucket, path, &buff,(ssize_t)0,(ssize_t)size);
+     fprintf(stderr,"\nTEXT WE THINK IS WRITTEN %s\n", (char *) buff);
+     
+     return ret_val;
      
 }
 
