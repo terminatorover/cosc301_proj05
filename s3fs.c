@@ -798,7 +798,24 @@ int fs_rename(const char *path, const char *newpath) {
     fprintf(stderr, "fs_rename(fpath=\"%s\", newpath=\"%s\")\n", path, newpath);
     s3context_t *ctx = GET_PRIVATE_DATA;
     //    dir_name 
+    char * dir_name = dirname(strdup(path));
+    char * base_name = basename(strdup(path));
     
+    uint8_t * the_buffer = NULL;
+    ssize_t ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buffer, 0, 0);
+    if ( -1 == ret_val){
+      return -EIO;
+    }
+    s3dirent_t *  entries = ( s3dirent_t *) the_buffer;
+    int count = ret_val / sizeof(s3dirent_t);
+    int itr = 0;
+    for (; itr < count ; itr++){
+      if (0 == strncmp(&entries[itr].name,base_name,256)){
+	if (entries[itr].type == TYPE_FILE){
+	  memcpy(&entries[itr].name,base_name,strlen(path));
+	}
+      }
+    }
     return -EIO;
 }
 
@@ -919,7 +936,8 @@ int fs_truncate(const char *path, off_t newsize) {
     for (; itr < count ; itr++){
       if (0 == strncmp(&entries[itr].name,base_name,256)){
 	if (entries[itr].type == TYPE_FILE){
-	entries[itr].size = newsize;
+	
+	memcpy(&entries[itr].size,& newsize,(size_t)sizeof(int));
 	}
 	}
     }
@@ -973,7 +991,8 @@ int fs_ftruncate(const char *path, off_t offset, struct fuse_file_info *fi) {
     for (; itr < count ; itr++){
       if (0 == strncmp(&entries[itr].name,base_name,256)){
 	if (entries[itr].type == TYPE_FILE){
-	entries[itr].size = offset;
+
+	  memcpy(&entries[itr].size,& offset,(size_t)sizeof(int));
 	}
 	}
     }
