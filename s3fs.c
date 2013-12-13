@@ -798,6 +798,7 @@ int fs_rename(const char *path, const char *newpath) {
     fprintf(stderr, "fs_rename(fpath=\"%s\", newpath=\"%s\")\n", path, newpath);
     s3context_t *ctx = GET_PRIVATE_DATA;
     //    dir_name 
+    
     return -EIO;
 }
 
@@ -893,6 +894,8 @@ int fs_truncate(const char *path, off_t newsize) {
     fprintf(stderr, "fs_truncate(path=\"%s\", newsize=%d)\n", path, (int)newsize);
     s3context_t *ctx = GET_PRIVATE_DATA;
     ssize_t ret_val =  0; 
+    char * dir_name = dirname(strdup(path));
+    char * base_name = basename(strdup(path));
     ret_val = s3fs_remove_object(ctx->s3bucket , path);
     if (ret_val == -1){
       return -EIO;
@@ -904,6 +907,24 @@ int fs_truncate(const char *path, off_t newsize) {
       
       return -EIO;
     }
+    //changing the size of the file
+    uint8_t * the_buffer = NULL;
+    ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buffer, 0, 0);
+    if ( -1 == ret_val){
+      return -EIO;
+    }
+    s3dirent_t *  entries = ( s3dirent_t *) the_buffer;
+    int count = ret_val / sizeof(s3dirent_t);
+    int itr = 0;
+    for (; itr < count ; itr++){
+      if (0 == strncmp(&entries[itr].name,base_name,256)){
+	if (entries[itr].type == TYPE_FILE){
+	entries[itr].size = newsize;
+	}
+	}
+    }
+    
+    
 
     
     return 0;
@@ -918,7 +939,47 @@ int fs_truncate(const char *path, off_t newsize) {
 int fs_ftruncate(const char *path, off_t offset, struct fuse_file_info *fi) {
     fprintf(stderr, "fs_ftruncate(path=\"%s\", offset=%d)\n", path, (int)offset);
     s3context_t *ctx = GET_PRIVATE_DATA;
-    return -EIO;
+
+
+
+    ssize_t ret_val =  0; 
+    char * dir_name = dirname(strdup(path));
+    char * base_name = basename(strdup(path));
+
+    ret_val = s3fs_remove_object(ctx->s3bucket , path);
+    if (ret_val == -1){
+      return -EIO;
+    }
+    uint8_t * the_buffer = NULL;
+    size_t ok = s3fs_get_object(ctx->s3bucket, path, &the_buffer, 0, 0);
+    uint8_t * buf = (uint8_t *) malloc(offset);
+    memset((void *)buf,(int) '\0',(size_t)offset);
+    memcpy((void *)buf,(void *)the_buffer,offset);
+    ssize_t put = 0 ;
+    put = s3fs_put_object(ctx->s3bucket,path,buf,0);
+    if (put == -1){
+      
+      return -EIO;
+    }
+    //changing the size of the file
+     the_buffer = NULL;
+    ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buffer, 0, 0);
+    if ( -1 == ret_val){
+      return -EIO;
+    }
+    s3dirent_t *  entries = ( s3dirent_t *) the_buffer;
+    int count = ret_val / sizeof(s3dirent_t);
+    int itr = 0;
+    for (; itr < count ; itr++){
+      if (0 == strncmp(&entries[itr].name,base_name,256)){
+	if (entries[itr].type == TYPE_FILE){
+	entries[itr].size = offset;
+	}
+	}
+    }
+    
+
+    return 0;
 }
 
 
