@@ -125,15 +125,17 @@ int fs_getattr(const char *path, struct stat *statbuf) {
    fprintf(stderr,"basename: %s\n",base_name);
     if ( 0 == strncmp(path,"/",strlen(path))){//check if we are being asked to get the atrr of root directory
       //   fprintf(stderr,"WE ARE SUPPOSED TO SEE THIS, because we aregetting atrributes of root dir");  
-      printf("===========================================");
+
     	ret_val = s3fs_get_object(ctx->s3bucket, path, &the_buffer, 0, 0);
+
     	if ( ret_val < 0){//this is only true if we were not able to return the object
 	  	  fprintf(stderr,"THIS MEANS THE FOLDER DOESN'T EXIST");
-		  free(the_path);
+		  //		  free(the_path);
      		return -EIO;
      		}
      	
-
+	fprintf(stderr,"NO OF RETERIVED DIRENTS: %d\n", (int) ret_val/sizeof(s3dirent_t));
+		
     s3dirent_t * our_obj = (s3dirent_t *)the_buffer;
     s3dirent_t root_dir = our_obj[0];
     statbuf -> st_mode = root_dir.mode;
@@ -149,7 +151,8 @@ int fs_getattr(const char *path, struct stat *statbuf) {
     statbuf -> st_ctime = root_dir.mtime;
 
     free(the_buffer);//because s3fs_get_object uses the_buffer as a pointer to a malloced object()
-    free(the_path);
+      fprintf(stderr,"===========================================");
+    //    free(the_path);
       fprintf(stderr,"I JUST RETURNED OK the root dir exsists");
       //      printf("-00000000000000000000000000---------------------");
     return 0;
@@ -843,9 +846,15 @@ int fs_unlink(const char *path) {
 	
 	{
 	  if ( entries[itr].type == TYPE_FILE ){
+	    uint8_t * new_buffer = NULL;
+	    ssize_t ret_va = 0;
+	    ret_va = s3fs_get_object(ctx->s3bucket, dir_name, &new_buffer, 0, 0);
+	    if ( ret_va < 0){//means that the supposed parent directory is not existent
+	      return -EIO;
+	    }
 	    s3dirent_t * fresh_parent = (s3dirent_t *) malloc(ret_val - sizeof(s3dirent_t));
-	    s3dirent_t * dir_ents = (s3dirent_t *) the_buffer;
-	    int count = sizeof(fresh_parent) / sizeof(s3dirent_t);//no dirents our new dir will have
+	    s3dirent_t * dir_ents = (s3dirent_t *) new_buffer;
+	    int count = (ret_va - sizeof(s3dirent_t))/(sizeof(s3dirent_t));
 	    int itr = 0;
 	    for ( ; itr < count ; itr ++){
       
@@ -856,13 +865,15 @@ int fs_unlink(const char *path) {
 		memcpy(&fresh_parent[itr],&dir_ents[itr],sizeof(s3dirent_t));
 	      }
 	    }
-	    ret_val = s3fs_put_object(ctx->s3bucket, dir_name, (uint8_t *)fresh_parent,sizeof(s3dirent_t)*count);
+	    ssize_t to_put = 0;
+	    to_put = s3fs_put_object(ctx->s3bucket, dir_name, (uint8_t *)fresh_parent,sizeof(s3dirent_t)*count);
 
-	    if ( ret_val == -1){//the object was not put
+	    if ( to_put == -1){//the object was not put
 	      free( fresh_parent);
 	      return -EIO;
 	    }
 	    free( fresh_parent);
+	    free(new_buffer);
 
 	    return 0;
 	  }
@@ -872,9 +883,6 @@ int fs_unlink(const char *path) {
 
     }
     
-
-    
-
     
     return -EIO;
 }
@@ -884,7 +892,21 @@ int fs_unlink(const char *path) {
 int fs_truncate(const char *path, off_t newsize) {
     fprintf(stderr, "fs_truncate(path=\"%s\", newsize=%d)\n", path, (int)newsize);
     s3context_t *ctx = GET_PRIVATE_DATA;
-    return -EIO;
+    ssize_t ret_val =  0; 
+    ret_val = s3fs_remove_object(ctx->s3bucket , path);
+    if (ret_val == -1){
+      return -EIO;
+    }
+    uint8_t * buf = NULL;
+    ssize_t put = 0 ;
+    put = s3fs_put_object(ctx->s3bucket,path,buf,0);
+    if (put == -1){
+      
+      return -EIO;
+    }
+
+    
+    return 0;
 }
 
 
