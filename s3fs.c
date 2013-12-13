@@ -731,7 +731,7 @@ int fs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
     fprintf(stderr,"\n IN READ, READ BUF: %s\n",buf);
     fprintf(stderr,"\n IN READ, READ TO_PASS: %s\n",(char *) new);
     
-    return 0;
+    return ret_val;
 }
 
 
@@ -794,6 +794,7 @@ int fs_release(const char *path, struct fuse_file_info *fi) {
 int fs_rename(const char *path, const char *newpath) {
     fprintf(stderr, "fs_rename(fpath=\"%s\", newpath=\"%s\")\n", path, newpath);
     s3context_t *ctx = GET_PRIVATE_DATA;
+    //    dir_name 
     return -EIO;
 }
 
@@ -804,6 +805,77 @@ int fs_rename(const char *path, const char *newpath) {
 int fs_unlink(const char *path) {
     fprintf(stderr, "fs_unlink(path=\"%s\")\n", path);
     s3context_t *ctx = GET_PRIVATE_DATA;
+    char * dir_name = dirname(strdup(path));
+    char * base_name = basename(strdup(path));
+    uint8_t * the_buffer = NULL;
+    int re_val = 0;
+    ssize_t ret_val = 0;
+    //removing the files data
+    re_val = s3fs_remove_object (ctx->s3bucket,path);
+    if ( -1 == re_val ){
+      fprintf(stderr,"\nTHIS MEANS the data of the file hasn't been deleted yet\n");
+      return -EIO;
+    }
+    
+    //remove the meta data from the parent directory 
+    ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buffer, 0, 0);
+    if ( ret_val < 0 ){//means we didn't get our object back 
+      //free(the_path);
+      fprintf(stderr,"THIS MEANS THE PARENT FOLDER DOESN'T EXIST");
+      return -EIO;
+    }
+    int itr = 0;
+    s3dirent_t * entries = (s3dirent_t *)the_buffer;
+    
+    int entity_count = ret_val / sizeof(s3dirent_t);//entitiy count gives us how many dirents we have
+    fprintf(stderr,"%d  number of s3drirents", entity_count);
+    
+    for (; itr < entity_count; itr++ ){
+
+      fprintf(stderr,"DIRS: %s-----\n",&entries[itr].name);
+      if (0 == strncmp(entries[itr].name,base_name,256))//check if any one of the metadata 
+	/*stored in the directry dir_name matches the base name
+	   path       dirname   basename
+	    /usr/lib   /usr      lib
+	    this means , when we store the name of a file or dir in another directory we just specify the name
+	    and not the whole path
+	*/
+	
+	{
+	  if ( entries[itr].type == TYPE_FILE ){
+	    s3dirent_t * fresh_parent = (s3dirent_t *) malloc(ret_val - sizeof(s3dirent_t));
+	    s3dirent_t * dir_ents = (s3dirent_t *) the_buffer;
+	    int count = sizeof(fresh_parent) / sizeof(s3dirent_t);//no dirents our new dir will have
+	    int itr = 0;
+	    for ( ; itr < count ; itr ++){
+      
+	      if ( (0 == strncmp(dir_ents[itr].name,base_name,256)) && (dir_ents[itr].type == TYPE_FILE))//if entry is the the name of the file we want to get rid of 
+		{continue;
+		}
+	      else{
+		memcpy(&fresh_parent[itr],&dir_ents[itr],sizeof(s3dirent_t));
+	      }
+	    }
+	    ret_val = s3fs_put_object(ctx->s3bucket, dir_name, (uint8_t *)fresh_parent,sizeof(s3dirent_t)*count);
+
+	    if ( ret_val == -1){//the object was not put
+	      free( fresh_parent);
+	      return -EIO;
+	    }
+	    free( fresh_parent);
+
+	    return 0;
+	  }
+
+	} 
+
+
+    }
+    
+
+    
+
+    
     return -EIO;
 }
 /*
@@ -880,6 +952,7 @@ struct fuse_operations s3fs_ops = {
   .create      = NULL,          // not implemented
   .ftruncate   = fs_ftruncate,  // truncate the file
   .fgetattr    = NULL           // not implemented
+
 };
 
 
