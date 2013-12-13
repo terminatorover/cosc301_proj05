@@ -1,5 +1,9 @@
 /*s This code is based on the fine code written by Joseph Pfeiffer for his
    fuse system tutorial. */
+//DONE BY 
+//Anna Miettinen
+//Robera Geleta
+//The truth
 
 #include "s3fs.h"
 #include "libs3_wrapper.h"
