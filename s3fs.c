@@ -799,24 +799,29 @@ int fs_rename(const char *path, const char *newpath) {
     s3context_t *ctx = GET_PRIVATE_DATA;
     //    dir_name 
     char * dir_name = dirname(strdup(path));
-    char * base_name = basename(strdup(path));
+    char * base_name1 = basename(strdup(path));
+    char * base_name = basename(strdup(newpath));
     
     uint8_t * the_buffer = NULL;
     ssize_t ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buffer, 0, 0);
     if ( -1 == ret_val){
       return -EIO;
     }
+
+    
     s3dirent_t *  entries = ( s3dirent_t *) the_buffer;
     int count = ret_val / sizeof(s3dirent_t);
     int itr = 0;
     for (; itr < count ; itr++){
-      if (0 == strncmp(&entries[itr].name,base_name,256)){
+      if (0 == strncmp(&entries[itr].name,base_name1,256)){
 	if (entries[itr].type == TYPE_FILE){
-	  memcpy(&entries[itr].name,base_name,strlen(path));
+	  strncpy(&entries[itr].name,base_name,strlen(base_name));
+	  fprintf(stderr,"%s NEW FILE ", &entries[itr]);
 	}
       }
     }
-    return -EIO;
+      ret_val = s3fs_put_object(ctx->s3bucket,dir_name,(uint8_t *) entries,ret_val );
+    return 0;
 }
 
 
