@@ -765,12 +765,32 @@ int fs_write(const char *path, const char *buf, size_t size, off_t offset, struc
        fprintf(stderr,"\nNOTHIGN WAS ACTUALLY WRITTTEN\n");
        return -EIO;
     }
-     ssize_t re_val = 0;
-     uint8_t * buff = NULL;
-     re_val = s3fs_get_object(ctx->s3bucket, path, &buff,(ssize_t)0,(ssize_t)size);
-     fprintf(stderr,"\nTEXT WE THINK IS WRITTEN %s\n", (char *) buff);
+         uint8_t * the_buf = NULL;
+     ret_val = s3fs_get_object(ctx->s3bucket, dir_name, &the_buf, 0, 0);
+     if ( -1 == ret_val){
+       return -EIO;
+     }//rewriting the size of the file in the parent dir
+     s3dirent_t *  entries = ( s3dirent_t *) the_buf;
+     int count = ret_val / sizeof(s3dirent_t);
+     int itr = 0;
+     for (; itr < count ; itr++){
+       if (0 == strncmp(&entries[itr].name,base_name,256)){
+         if (entries[itr].type == TYPE_FILE){
+
+           memcpy(&entries[itr].size,& size,(size_t)sizeof(int));
+         }
+       }
+     }
+    ssize_t parent_put = s3fs_put_object(ctx->s3bucket,dir_name,(uint8_t *) ent\
+ries,ret_val);
+    if (parent_put == -1){
+      return -EIO;
+    }
+
+
+    return ret_val;
+
      
-     return ret_val;
      
 }
 
